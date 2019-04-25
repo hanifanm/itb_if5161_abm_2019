@@ -9,6 +9,10 @@ turtles-own [
   age
   wealth
   self-saving-factor
+
+  ;;;;
+  wealth-before
+  wealth-after
 ]
 
 to setup
@@ -16,75 +20,45 @@ to setup
   set-global
   set-turtles
   update-lorenz-curve
-  set-patches
   reset-ticks
 end
 
 to set-global
-  set maximum-ticks 10000
+  set maximum-ticks 1000
   set sum-gini-index 0
 end
 
 to set-turtles
-  create-turtles num-population [
-    set size 1.5
-    setxy random-xcor random-ycor
-    set shape "person"
-    set self-saving-factor ((random 0.3) + 0.35)
-    set age ( random 100 )
-    set wealth ( random 100 )
-    update-color
-  ]
-end
-
-to set-patches
-  ;ask patches [ set pcolor white ]
-  ;ask patches with [
-  ;  (pycor > max-pycor - 5)
-  ;  and (pycor < max-pycor) and
-  ;  (pxcor > min-pxcor) and
-  ;  (pxcor < max-pxcor)
-  ;]
-  ;  [ set pcolor blue ]
-end
-
-to go
-  repeat num-population [
-    do-transaction
-  ]
-  pay-zakat
-  check-age
-  update-lorenz-curve
-  tick
-  ;auto-update-parameter
-end
-
-to auto-update-parameter
-  if(ticks mod 1000 = 0) [
-    set saving-factor ( saving-factor + 0.1 )
-    ;set tax-factor (tax-factor + 1)
-  ]
-end
-
-to check-age
-  ask turtles [
-    set age ( age - 1 )
-    if ( age <= 0 ) [ die ]
-  ]
   create-turtles (num-population - count turtles) [
     set size 1.5
     setxy random-xcor random-ycor
     set shape "person"
-    set self-saving-factor ((random 0.3) + 0.35)
-    set age ( random 100 )
+    set age random 10000
     set wealth ( random 100 )
+    ifelse (is-equal-saving-factor)
+    [
+      set self-saving-factor saving-factor
+    ]
+    [
+      set self-saving-factor (0.1 + random 0.8)
+    ]
+
     update-color
   ]
 end
 
+to go
+  repeat (num-population / 2) [
+    do-transaction
+  ]
+  check-pay-tax
+  update-lorenz-curve
+  tick
+end
+
 to do-transaction
-  let personA one-of turtles
-  let personB one-of turtles
+  let personA pick-one-turtle
+  let personB pick-one-turtle
 
   if(personA != personB) [
 
@@ -101,19 +75,8 @@ to do-transaction
       fd (posX - xcor)
       set heading 0
       fd (posY - ycor)
-
-
-      ifelse (is-equal-saving-factor)
-      [
-        ;equal saving factor
-        set transaction-amount ( transaction-amount + wealth * ( 1 - saving-factor ) )
-        set wealth ( wealth - wealth * ( 1 - saving-factor ) )
-      ]
-      [
-        ;variation saving factor
-        set transaction-amount ( transaction-amount + wealth * ( 1 - self-saving-factor ) )
-        set wealth ( wealth - wealth * ( 1 - self-saving-factor ) )
-      ]
+       set transaction-amount ( transaction-amount + wealth * ( 1 - self-saving-factor ) )
+       set wealth ( wealth - wealth * ( 1 - self-saving-factor ) )
     ]
 
     ask personB [
@@ -122,29 +85,16 @@ to do-transaction
       fd (posX - xcor + 1)
       set heading 0
       fd (posY - ycor)
-
-
-      ifelse (is-equal-saving-factor)
-      [
-        ;equal saving factor
-        set transaction-amount ( transaction-amount + wealth * ( 1 - saving-factor ) )
-        set wealth ( wealth - wealth * ( 1 - saving-factor ) )
-      ]
-      [
-        ;variation saving factor
-        set transaction-amount ( transaction-amount + wealth * ( 1 - self-saving-factor ) )
-        set wealth ( wealth - wealth * ( 1 - self-saving-factor ) )
-      ]
+       set transaction-amount ( transaction-amount + wealth * ( 1 - self-saving-factor ) )
+       set wealth ( wealth - wealth * ( 1 - self-saving-factor ) )
     ]
 
     ;;;;;;;;;;;;;;;;;;;;;
 
     let gambling-percentage random-float 1
-
     ask personA [
       set wealth ( wealth + transaction-amount * gambling-percentage )
     ]
-
     ask personB [
       set wealth ( wealth + transaction-amount * ( 1 - gambling-percentage ) )
     ]
@@ -154,6 +104,24 @@ to do-transaction
     ask personA [ update-color ]
     ask personB [ update-color ]
   ]
+end
+
+to-report pick-one-turtle
+  let sum-wealth ( sum [wealth] of turtles )
+  let pos ( random sum-wealth )
+  let index 0
+  let selected one-of turtles
+  repeat count turtles [
+    ask turtle index [
+      if (pos < wealth and pos > 0)
+      [
+        set selected turtle index
+      ]
+      set pos (pos - wealth)
+    ]
+    set index (index + 1)
+  ]
+  report selected
 end
 
 to update-color
@@ -167,17 +135,18 @@ to update-color
     ]
 end
 
-to pay-zakat
-
-  let num-poor ( count turtles with [ color = red ] )
-  let total-zakat 0
-  if (num-poor > 0) [
-    ask turtles with [ color = green or color = yellow ] [
-      set total-zakat ( total-zakat + wealth * tax-factor / 100 )
-      set wealth ( wealth - wealth * tax-factor / 100 )
-    ]
-    ask turtles with [ color = red ] [
-      set wealth ( wealth + total-zakat / num-poor )
+to check-pay-tax
+  if(tax-freq > 0)[
+    let tax-period (maximum-ticks / tax-freq)
+    if(ticks > 0 and tax-period > 0 and ticks mod tax-period = 0) [
+      let total-tax 0
+      ask turtles [
+        set total-tax ( total-tax + wealth * tax-factor / 100 )
+        set wealth ( wealth - wealth * tax-factor / 100 )
+      ]
+      ask turtles [
+        set wealth ( wealth + total-tax / (count turtles) )
+      ]
     ]
   ]
 end
@@ -204,10 +173,10 @@ to update-lorenz-curve
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-307
-26
-744
-464
+255
+96
+692
+534
 -1
 -1
 13.0
@@ -231,10 +200,10 @@ ticks
 30.0
 
 BUTTON
-96
-197
-194
-230
+41
+98
+139
+131
 setup
 setup
 NIL
@@ -248,12 +217,12 @@ NIL
 1
 
 BUTTON
-199
-197
-297
-230
+144
+98
+242
+131
 go
-;if (ticks < maximum-ticks)\n;  [ go ]\ngo
+if (ticks < maximum-ticks)\n  [ go ]\n;go
 T
 1
 T
@@ -265,10 +234,10 @@ NIL
 1
 
 PLOT
-752
-25
-952
-175
+41
+165
+241
+315
 Lorenz Curve
 % Population
 % Wealth
@@ -284,67 +253,67 @@ PENS
 "equal" 100.0 0 -14737633 true "plot 0\nplot 100" ""
 
 SLIDER
-97
-109
-296
-142
+266
+55
+465
+88
 saving-factor
 saving-factor
-0
-1
-0.0
+0.1
+0.9
+0.25
 0.05
 1
 NIL
 HORIZONTAL
 
 SLIDER
-95
-27
-295
-60
+40
+15
+240
+48
 num-population
 num-population
 5
 500
-243.0
-1
+100.0
+5
 1
 NIL
 HORIZONTAL
 
 PLOT
-754
-340
-1161
-490
+702
+324
+1109
+474
 Gini Index
 Time
 Gini
 0.0
-100.0
+1000.0
 0.0
 1.0
 true
-true
+false
 "" ""
 PENS
 "Gini" 1.0 0 -13791810 true "" "plot (gini-index-reserve / num-population) / 0.5"
 
 PLOT
-754
-184
-1160
-334
+702
+10
+1108
+160
 Class Plot
-NIL
-NIL
+Time
+Population
 0.0
-50.0
+1000.0
 0.0
-500.0
+100.0
 true
-true
+false
 "set-plot-y-range 0 num-population" ""
 PENS
 "Poor" 1.0 0 -2674135 true "" "plot count turtles with [color = red]"
@@ -352,10 +321,10 @@ PENS
 "Rich" 1.0 0 -13840069 true "" "plot count turtles with [color = green]"
 
 PLOT
-960
-25
-1160
-175
+43
+321
+243
+471
 Class Histogram
 NIL
 NIL
@@ -370,59 +339,74 @@ PENS
 "default" 1.0 1 -16777216 true "" "plot-pen-reset\nset-plot-pen-color red\nplot count turtles with [color = red]\nset-plot-pen-color yellow\nplot count turtles with [color = yellow]\nset-plot-pen-color green\nplot count turtles with [color = green]"
 
 SLIDER
-95
-152
-296
-185
+490
+11
+691
+44
 tax-factor
 tax-factor
 0
-10
-0.0
+50
+50.0
 0.5
 1
 %
 HORIZONTAL
 
-PLOT
-92
-254
-292
-404
-total-wealth
-Time
-Total Wealth
-0.0
-10.0
-0.0
-100.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot sum [ wealth ] of turtles"
-
 MONITOR
-92
-424
-292
-469
+702
+484
+769
+529
 Gini Index
 sum-gini-index / ticks
-17
+5
 1
 11
 
 SWITCH
-96
-68
-296
-101
+265
+14
+465
+47
 is-equal-saving-factor
 is-equal-saving-factor
-1
+0
 1
 -1000
+
+SLIDER
+490
+55
+691
+88
+tax-freq
+tax-freq
+0
+100
+5.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+702
+167
+1109
+317
+Wealth Change
+NIL
+NIL
+0.0
+1000.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"wealth-change" 1.0 0 -5825686 true "" "let total-change 0\nask turtles [\n  set wealth-before wealth-after\n  set wealth-after wealth\n  set total-change ( total-change + abs( wealth-after - wealth-before ) )\n]\nplot total-change / count turtles"
 
 @#$#@#$#@
 ## WHAT IS IT?
