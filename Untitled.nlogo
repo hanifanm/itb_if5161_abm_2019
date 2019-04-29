@@ -3,6 +3,7 @@ globals [
   lorenz-points
   maximum-ticks
   sum-gini-index
+  sum-wealth-change
 ]
 
 turtles-own [
@@ -12,7 +13,6 @@ turtles-own [
 
   ;;;;
   wealth-before
-  wealth-after
 ]
 
 to setup
@@ -70,23 +70,15 @@ to do-transaction
     let transaction-amount 0
 
     ask personA [
-      facexy posX posY
-      set heading 90
-      fd (posX - xcor)
-      set heading 0
-      fd (posY - ycor)
-       set transaction-amount ( transaction-amount + wealth * ( 1 - self-saving-factor ) )
-       set wealth ( wealth - wealth * ( 1 - self-saving-factor ) )
+      move-turtle posX posY
+      set transaction-amount ( transaction-amount + wealth * ( 1 - self-saving-factor ) )
+      set wealth ( wealth - wealth * ( 1 - self-saving-factor ) )
     ]
 
     ask personB [
-      facexy posX posY
-      set heading 90
-      fd (posX - xcor + 1)
-      set heading 0
-      fd (posY - ycor)
-       set transaction-amount ( transaction-amount + wealth * ( 1 - self-saving-factor ) )
-       set wealth ( wealth - wealth * ( 1 - self-saving-factor ) )
+      move-turtle (posX + 1) posY
+      set transaction-amount ( transaction-amount + wealth * ( 1 - self-saving-factor ) )
+      set wealth ( wealth - wealth * ( 1 - self-saving-factor ) )
     ]
 
     ;;;;;;;;;;;;;;;;;;;;;
@@ -104,6 +96,14 @@ to do-transaction
     ask personA [ update-color ]
     ask personB [ update-color ]
   ]
+end
+
+to move-turtle [posX posY]
+  facexy posX posY
+  set heading 90
+  fd (posX - xcor)
+  set heading 0
+  fd (posY - ycor)
 end
 
 to-report pick-one-turtle
@@ -137,6 +137,7 @@ end
 
 to check-pay-tax
   if(tax-freq > 0)[
+
     let tax-period (maximum-ticks / tax-freq)
     if(ticks > 0 and tax-period > 0 and ticks mod tax-period = 0) [
       let total-tax 0
@@ -144,8 +145,9 @@ to check-pay-tax
         set total-tax ( total-tax + wealth * tax-factor / 100 )
         set wealth ( wealth - wealth * tax-factor / 100 )
       ]
+      let count-turtles count turtles
       ask turtles [
-        set wealth ( wealth + total-tax / (count turtles) )
+        set wealth ( wealth + total-tax / (count-turtles) )
       ]
     ]
   ]
@@ -162,7 +164,6 @@ to update-lorenz-curve
   repeat count turtles [
     set wealth-sum-so-far ( wealth-sum-so-far + item index sorted-wealths )
     set lorenz-points lput ( ( wealth-sum-so-far / total-wealth) * 100 ) lorenz-points
-    ;; set lorenz-points lput ( random 100 ) lorenz-points
     set index (index + 1)
     set gini-index-reserve
       gini-index-reserve +
@@ -261,7 +262,7 @@ saving-factor
 saving-factor
 0.1
 0.9
-0.25
+0.1
 0.05
 1
 NIL
@@ -284,9 +285,9 @@ HORIZONTAL
 
 PLOT
 702
-324
+167
 1109
-474
+317
 Gini Index
 Time
 Gini
@@ -299,6 +300,7 @@ false
 "" ""
 PENS
 "Gini" 1.0 0 -13791810 true "" "plot (gini-index-reserve / num-population) / 0.5"
+"Average_1" 1.0 0 -955883 true "" "ifelse (ticks = 0)\n[\n  plot 0\n]\n[\n  plot sum-gini-index / ticks\n]\n"
 
 PLOT
 702
@@ -346,17 +348,17 @@ SLIDER
 tax-factor
 tax-factor
 0
-50
-50.0
-0.5
+80
+5.0
+2.5
 1
 %
 HORIZONTAL
 
 MONITOR
-702
+703
 484
-769
+793
 529
 Gini Index
 sum-gini-index / ticks
@@ -371,7 +373,7 @@ SWITCH
 47
 is-equal-saving-factor
 is-equal-saving-factor
-0
+1
 1
 -1000
 
@@ -383,18 +385,18 @@ SLIDER
 tax-freq
 tax-freq
 0
-100
-5.0
-1
+1000
+1000.0
+50
 1
 NIL
 HORIZONTAL
 
 PLOT
 702
-167
+325
 1109
-317
+475
 Wealth Change
 NIL
 NIL
@@ -404,9 +406,32 @@ NIL
 10.0
 true
 false
-"" ""
+"set sum-wealth-change 0" ""
 PENS
-"wealth-change" 1.0 0 -5825686 true "" "let total-change 0\nask turtles [\n  set wealth-before wealth-after\n  set wealth-after wealth\n  set total-change ( total-change + abs( wealth-after - wealth-before ) )\n]\nplot total-change / count turtles"
+"wealth-change" 1.0 0 -5825686 true "" "let total-change 0\nask turtles [\n  set total-change ( total-change + abs( wealth - wealth-before ) )\n  set wealth-before wealth\n]\nlet current-wealth-change total-change / count turtles\nset sum-wealth-change (sum-wealth-change + current-wealth-change)\nplot current-wealth-change"
+"average" 1.0 0 -955883 true "" "ifelse (ticks = 0)\n[\n  plot 0\n]\n[\n  plot sum-wealth-change / ticks\n]"
+
+MONITOR
+893
+484
+983
+529
+total-wealth
+sum [wealth] of turtles
+0
+1
+11
+
+MONITOR
+798
+484
+888
+529
+Wealth Change
+sum-wealth-change / ticks
+5
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
