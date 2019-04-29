@@ -12,7 +12,7 @@ turtles-own [
   self-saving-factor
 
   ;;;;
-  wealth-before
+  color-before
 ]
 
 to setup
@@ -42,8 +42,8 @@ to set-turtles
     [
       set self-saving-factor (0.1 + random 0.8)
     ]
-
     update-color
+    set color-before color
   ]
 end
 
@@ -349,7 +349,7 @@ tax-factor
 tax-factor
 0
 80
-5.0
+50.0
 2.5
 1
 %
@@ -385,9 +385,9 @@ SLIDER
 tax-freq
 tax-freq
 0
-1000
-1000.0
-50
+100
+100.0
+1
 1
 NIL
 HORIZONTAL
@@ -408,7 +408,7 @@ true
 false
 "set sum-wealth-change 0" ""
 PENS
-"wealth-change" 1.0 0 -5825686 true "" "let total-change 0\nask turtles [\n  set total-change ( total-change + abs( wealth - wealth-before ) )\n  set wealth-before wealth\n]\nlet current-wealth-change total-change / count turtles\nset sum-wealth-change (sum-wealth-change + current-wealth-change)\nplot current-wealth-change"
+"wealth-change" 1.0 0 -5825686 true "" "let total-change 0\nask turtles [\n  if(color-before != color) [\n    set total-change (total-change + 1)\n  ]\n  set color-before color\n]\nset sum-wealth-change (sum-wealth-change + total-change)\nplot total-change"
 "average" 1.0 0 -955883 true "" "ifelse (ticks = 0)\n[\n  plot 0\n]\n[\n  plot sum-wealth-change / ticks\n]"
 
 MONITOR
