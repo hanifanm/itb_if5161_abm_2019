@@ -349,7 +349,7 @@ tax-factor
 tax-factor
 0
 80
-0.0
+50.0
 2.5
 1
 %
@@ -386,7 +386,7 @@ tax-freq
 tax-freq
 0
 100
-0.0
+100.0
 1
 1
 NIL
@@ -403,7 +403,7 @@ NIL
 0.0
 1000.0
 0.0
-10.0
+50.0
 true
 false
 "set sum-wealth-change 0" ""
